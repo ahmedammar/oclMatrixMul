@@ -6,9 +6,9 @@
 #include <math.h>
 #include <oclUtils.h>
  
-#define WA 642//1080
-#define HA 480//1080//9
-#define WB 642//1080//3
+#define WA 642
+#define HA 480//9
+#define WB 642//3
 #define HB WA
 #define WC WB
 #define HC HA
@@ -33,20 +33,20 @@ double executionTime(cl_event &event)
     return (double)1.0e-9 * (end - start); // convert nanoseconds to seconds on return
 }
 
-void profileEvent(cl_event &event)
+void profileEvent(const char* label, cl_event &event)
 {
     double dSeconds = executionTime(event);
     double dSize = ((double)WA * (double)HA * (double)WB * (double)HB);
     shrLog(LOGBOTH | MASTER, 0, "oclMatrixMul, %s Throughput = %.4f, Time = %.5f, Size = %.0f\n", 
-            __func__, 1.0e-9 * dSize/dSeconds, dSeconds, dSize);
+            label, 1.0e-9 * dSize/dSeconds, dSeconds, dSize);
 }
 
-void profileTime()
+void profileTime(const char* label)
 {
     double dSeconds = shrDeltaT(0);
     double dSize = ((double)WA * (double)HA * (double)WB * (double)HB);
     shrLog(LOGBOTH | MASTER, 0, "oclMatrixMul, %s Throughput = %.4f, Time = %.5f, Size = %.0f\n", 
-            __func__, 1.0e-9 * dSize/dSeconds, dSeconds, dSize);
+            label, 1.0e-9 * dSize/dSeconds, dSeconds, dSize);
 }
 
 void printDiff(float *data1, float *data2, int width, int height)
@@ -184,7 +184,7 @@ main(int argc, char** argv)
     shrCheckError(errcode, CL_SUCCESS);
 
     errcode = clBuildProgram(clProgram, 0, 
-              NULL, NULL, NULL, NULL);
+              NULL, "-cl-mad-enable"/* -cl-fast-relaxed-math"*/, NULL, NULL);
     shrCheckError(errcode, CL_SUCCESS);
 
     clKernel = clCreateKernel(clProgram, 
@@ -215,8 +215,8 @@ main(int argc, char** argv)
               sizeof(int), (void *)&wC);*/
     shrCheckError(errcode, CL_SUCCESS);
 
-    localWorkSize[0] = 6;
-    localWorkSize[1] = 6;
+    localWorkSize[0] = 3;
+    localWorkSize[1] = 3;
     globalWorkSize[0] = WB;  //wB
     globalWorkSize[1] = HA;  //hA
 
@@ -235,7 +235,7 @@ main(int argc, char** argv)
 
     //clWaitForEvents(0, &GPUExecution);
 
-    profileEvent(GPUExecution);
+    profileEvent("[OpenCL]", GPUExecution);
 #if 0
     // 9. print out the results
     printf("\n\nMatrix C (Results)\n");
@@ -253,7 +253,7 @@ main(int argc, char** argv)
 
     shrDeltaT(0);
     computeGold(g_C, h_A, h_B, HA, WA, WB);
-    profileTime();
+    profileTime("[Plain C]");
 #if 0
     // 11. print out the results
     printf("\n\nGolden Matrix C\n");
@@ -266,7 +266,7 @@ main(int argc, char** argv)
     printf("\n");
 #endif
     // 11. compare results
-    shrBOOL res = shrCompareL2fe(g_C, h_C, size_C, 1e-6f);
+    shrBOOL res = shrCompareL2fe(g_C, h_C, size_C, 1e-2f);
     shrLog(LOGBOTH, 0, "TEST %s \n\n", (1 == res) ? "PASSED" : "FAILED !!!");
     if (res != 1) 
     {

@@ -97,17 +97,18 @@ matrixMul(__global float* C,
 
     // value stores the element 
     // that is computed by the thread
-    float value = 0;
+    float value = 0; //FIXME
     for (int k = 0; k < wA; ++k)
     {
-      float elementA = A[(by*wA*6) + (ty*wA) + k];
+      float elementA = A[(by*wA*3) + (ty*wA) + k];
       //float elementB = B[(bx*wB*3) + (tx*wB) + k]; //coalesced access to B
-      float elementB = B[(bx*6) + tx + (wB*k)];
+      float elementB = B[(bx*3) + tx + (wB*k)];
       value += elementA * elementB;
+      //value = mad(elementA, elementB, value);
     }
 
     // Write the matrix to device memory each 
     // thread writes one element
-    C[(wB*by*6) + (wB*ty) + (bx*6) + tx] = value;
+    C[(wB*by*3) + (wB*ty) + (bx*3) + tx] = value;
 }
 
