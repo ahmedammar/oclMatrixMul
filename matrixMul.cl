@@ -1,15 +1,16 @@
+#if 0
 __kernel void
-matrixMul(__global short* C, 
-          __global short8* A, 
-          __global short8* B)
+matrixMulFULL(__global float* C, 
+          __global float* A, 
+          __global float* B)
 {
     // Declaration of the local memory array As 
     // used to store the sub-matrix of A
-    __local short8 As[BLOCK_SIZE][BLOCK_SIZE];
+    __local float As[BLOCK_SIZE][BLOCK_SIZE];
 
     // Declaration of the local memory array Bs 
     // used to store the sub-matrix of B
-    __local short8 Bs[BLOCK_SIZE][BLOCK_SIZE];
+    __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
  
     // Block index
     int bx = get_group_id(0);
@@ -41,7 +42,7 @@ matrixMul(__global short* C,
 
     // Csub is used to store the element of the block sub-matrix
     // that is computed by the thread
-    short8 Csub = { 0, 0, 0, 0, 0, 0, 0, 0};//0.000001041666667 * WA; // We have some mathematical error?
+    float Csub = 0.0f; //0.000001041666667 * WA; // We have some mathematical error?
  
     // Loop over all the sub-matrices of A and B
     // required to compute the block sub-matrix
@@ -76,8 +77,37 @@ matrixMul(__global short* C,
     // Write the block sub-matrix to device memory;
     // each thread writes one element
     //int c = WB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
-    C[get_global_id(1) * get_global_size(0) + get_global_id(0)] = Csub.s0 +
-    Csub.s1 + Csub.s2 + Csub.s3 + Csub.s4 + Csub.s5 + Csub.s6 + Csub.s7;
+    C[get_global_id(1) * get_global_size(0) + get_global_id(0)] = Csub;
+}
+#endif
+// OpenCL Kernel
+__kernel void
+matrixMul(__global float* C, 
+          __global float* A, 
+          __global float* B, 
+          int hA, int wA, int wB)
+{
+    // Block index
+    int bx = get_group_id(0);
+    int by = get_group_id(1);
 
+    // Thread index
+    int tx = get_local_id(0);
+    int ty = get_local_id(1);
+
+    // value stores the element 
+    // that is computed by the thread
+    float value = 0;
+    for (int k = 0; k < wA; ++k)
+    {
+      float elementA = A[(by*wA*6) + (ty*wA) + k];
+      //float elementB = B[(bx*wB*3) + (tx*wB) + k]; //coalesced access to B
+      float elementB = B[(bx*6) + tx + (wB*k)];
+      value += elementA * elementB;
+    }
+
+    // Write the matrix to device memory each 
+    // thread writes one element
+    C[(wB*by*6) + (wB*ty) + (bx*6) + tx] = value;
 }
 
