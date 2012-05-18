@@ -6,9 +6,9 @@
 #include <math.h>
 #include <oclUtils.h>
  
-#define WA 642
-#define HA 480//9
-#define WB 642//3
+#define WA 16
+#define HA 16//9
+#define WB 16//3
 #define HB WA
 #define WC WB
 #define HC HA
@@ -195,28 +195,29 @@ main(int argc, char** argv)
     // 7. Launch OpenCL kernel
     size_t localWorkSize[2], globalWorkSize[2];
 
-    int wA = WA;
+/*    int wA = WA;
     int wC = WC;
     int wB = WB;
-    int hA = HA;
+    int hA = HA;*/
     errcode = clSetKernelArg(clKernel, 0, 
               sizeof(cl_mem), (void *)&d_C);
     errcode |= clSetKernelArg(clKernel, 1, 
               sizeof(cl_mem), (void *)&d_A);
     errcode |= clSetKernelArg(clKernel, 2, 
               sizeof(cl_mem), (void *)&d_B);
+/*
     errcode |= clSetKernelArg(clKernel, 3, 
               sizeof(int), (void *)&hA);
     errcode |= clSetKernelArg(clKernel, 4, 
               sizeof(int), (void *)&wA);
     errcode |= clSetKernelArg(clKernel, 5, 
               sizeof(int), (void *)&wB);
-/*    errcode |= clSetKernelArg(clKernel, 5, 
+    errcode |= clSetKernelArg(clKernel, 5, 
               sizeof(int), (void *)&wC);*/
     shrCheckError(errcode, CL_SUCCESS);
 
-    localWorkSize[0] = 3;
-    localWorkSize[1] = 3;
+    localWorkSize[0] = 2;
+    localWorkSize[1] = 2;
     globalWorkSize[0] = WB;  //wB
     globalWorkSize[1] = HA;  //hA
 
@@ -224,16 +225,16 @@ main(int argc, char** argv)
 
     errcode = clEnqueueNDRangeKernel(clCommandQue, 
               clKernel, 2, NULL, globalWorkSize, 
-              localWorkSize, 0, NULL, NULL);
+              localWorkSize, 0, NULL, &GPUExecution);
     shrCheckError(errcode, CL_SUCCESS);
 
     // 8. Retrieve result from device
     errcode = clEnqueueReadBuffer(clCommandQue, 
               d_C, CL_TRUE, 0, mem_size_C, 
-              h_C, 0, NULL, &GPUExecution);
+              h_C, 0, NULL, NULL);
     shrCheckError(errcode, CL_SUCCESS);
 
-    //clWaitForEvents(0, &GPUExecution);
+    clWaitForEvents(1, &GPUExecution);
 
     profileEvent("[OpenCL]", GPUExecution);
 #if 0

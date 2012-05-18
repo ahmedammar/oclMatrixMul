@@ -8,9 +8,9 @@ matrixMulFULL(__global float* C,
     // used to store the sub-matrix of A
     __local float As[BLOCK_SIZE][BLOCK_SIZE];
 
-    // Declaration of the local memory array Bs 
+    // Declaration of the local memory array BS 
     // used to store the sub-matrix of B
-    __local float Bs[BLOCK_SIZE][BLOCK_SIZE];
+    __local float BS[BLOCK_SIZE][BLOCK_SIZE];
  
     // Block index
     int bx = get_group_id(0);
@@ -38,7 +38,7 @@ matrixMulFULL(__global float* C,
  
     // Step size used to iterate through the 
     // sub-matrices of B
-    int bStep  = BLOCK_SIZE * WB;
+    int BStep  = BLOCK_SIZE * WB;
 
     // Csub is used to store the element of the block sub-matrix
     // that is computed by the thread
@@ -48,14 +48,14 @@ matrixMulFULL(__global float* C,
     // required to compute the block sub-matrix
     for (int a = aBegin, b = bBegin;
              a <= aEnd;
-             a += aStep, b += bStep) 
+             a += aStep, b += BStep) 
     {
 
         // Load the matrices from global memory
         // to local memory; each thread loads
         // one element of each matrix
         As[ty][tx] = A[a + WA * ty + tx];
-        Bs[ty][tx] = B[b + WB * ty + tx];
+        BS[ty][tx] = B[b + WB * ty + tx];
  
         // Synchronize to make sure the matrices 
         // are loaded
@@ -65,7 +65,7 @@ matrixMulFULL(__global float* C,
         // each thread computes one element
         // of the block sub-matrix
         for (int k = 0; k < BLOCK_SIZE; ++k)
-            Csub += As[ty][k] * Bs[k][tx];
+            Csub += As[ty][k] * BS[k][tx];
  
         // Synchronize to make sure that the preceding
         // computation is done before loading two new
@@ -80,12 +80,16 @@ matrixMulFULL(__global float* C,
     C[get_global_id(1) * get_global_size(0) + get_global_id(0)] = Csub;
 }
 #endif
+#define WA 16
+#define WB 16
+
+#define N 4
+
 // OpenCL Kernel
 __kernel void
 matrixMul(__global float* C, 
           __global float* A, 
-          __global float* B, 
-          int hA, int wA, int wB)
+          __global float* B)
 {
     // Block index
     int bx = get_group_id(0);
@@ -98,17 +102,17 @@ matrixMul(__global float* C,
     // value stores the element 
     // that is computed by the thread
     float value = 0; //FIXME
-    for (int k = 0; k < wA; ++k)
+    for (int k = 0; k < WA; ++k)
     {
-      float elementA = A[(by*wA*3) + (ty*wA) + k];
-      //float elementB = B[(bx*wB*3) + (tx*wB) + k]; //coalesced access to B
-      float elementB = B[(bx*3) + tx + (wB*k)];
+      float elementA = A[(by*WA*3) + (ty*WA) + k];
+      //float elementB = B[(bx*WB*3) + (tx*WB) + k]; //coalesced access to B
+      float elementB = B[(bx*3) + tx + (WB*k)];
       value += elementA * elementB;
       //value = mad(elementA, elementB, value);
     }
 
     // Write the matrix to device memory each 
     // thread writes one element
-    C[(wB*by*3) + (wB*ty) + (bx*3) + tx] = value;
+    C[(WB*by*3) + (WB*ty) + (bx*3) + tx] = value;
 }
 
