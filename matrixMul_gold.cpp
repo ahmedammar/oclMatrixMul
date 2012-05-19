@@ -34,12 +34,27 @@ computeGold(float* C, const float* A, const float* B, unsigned int hA, unsigned 
 {
     for (unsigned int i = 0; i < hA; ++i)
         for (unsigned int j = 0; j < wB; ++j) {
-            float sum = 0.0f;
-            for (unsigned int k = 0; k < wA; ++k) {
-                float a = A[i * wA + k];
-                float b = B[k * wB + j];
+
+			const unsigned ix = j;
+			const unsigned iy = i;
+			const buffer_w = wB;
+
+			const unsigned N = 4;
+			const unsigned ix_rounded_to_prev_N_multiple = ix / N * N;
+			const unsigned iy_rounded_to_prev_N_multiple = iy / N * N;
+
+			const unsigned ia = ix_rounded_to_prev_N_multiple + buffer_w * iy;
+			const unsigned ib = ix_rounded_to_prev_N_multiple + buffer_w * (iy_rounded_to_prev_N_multiple + ix - ix_rounded_to_prev_N_multiple);
+
+            const float a = A[ia];
+            const float b = B[ib];
+            float sum = a * b;
+
+            for (unsigned k = 1; k < N; ++k) {
+                const float a = A[ia + k];
+                const float b = B[ib + k];
                 sum += a * b;
             }
-            C[i * wB + j] = sum;
+            C[i * buffer_w + j] = sum;
         }
 }
